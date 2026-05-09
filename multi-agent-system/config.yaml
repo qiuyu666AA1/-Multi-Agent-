@@ -1,0 +1,93 @@
+# Multi-Agent Collaborative Operations Automation System Configuration
+
+system:
+  name: "Multi-Agent Operations System"
+  version: "1.0.0"
+  log_level: "INFO"
+  log_file: "agent_system.log"
+
+# Agent Configuration
+agents:
+  coordinator:
+    enabled: true
+    heartbeat_interval: 10.0
+    max_concurrent_tasks: 5
+
+  analyst:
+    enabled: true
+    heartbeat_interval: 10.0
+    max_concurrent_tasks: 3
+
+  executor:
+    enabled: true
+    heartbeat_interval: 10.0
+    max_concurrent_tasks: 5
+
+  monitor:
+    enabled: true
+    heartbeat_interval: 5.0
+    max_concurrent_tasks: 3
+
+# Task Queue
+task_queue:
+  max_retries: 3
+  default_timeout: 60.0
+  cleanup_completed_after_hours: 24
+
+# Message Bus
+message_bus:
+  max_message_log: 1000
+  request_timeout: 30.0
+
+# Web Dashboard
+web:
+  enabled: true
+  host: "127.0.0.1"
+  port: 5000
+  debug: false
+  auto_refresh_interval: 3
+
+# Knowledge Base
+knowledge_base:
+  max_events: 500
+  max_metrics_per_key: 200
+
+# Alert Thresholds
+alerts:
+  disk_usage_percent: 90
+  memory_usage_percent: 85
+  cpu_usage_percent: 90
+  agent_timeout_seconds: 30
+  error_rate_threshold: 0.05
+
+# Notification Channels
+notifications:
+  console:
+    enabled: true
+    min_level: "INFO"
+  email:
+    enabled: false
+    smtp_host: "localhost"
+    smtp_port: 25
+    from_address: "agent-system@localhost"
+  webhook:
+    enabled: false
+    url: ""
+
+# Workflow Templates
+workflows:
+  health_check:
+    description: "Comprehensive system health assessment"
+    steps: ["check_disk", "check_memory", "check_processes", "analyze_health", "notify"]
+
+  data_analysis:
+    description: "Automated data collection and analysis"
+    steps: ["collect_data", "clean_data", "analyze", "generate_report"]
+
+  incident_response:
+    description: "Automated incident detection and response"
+    steps: ["assess", "contain", "remediate", "verify", "postmortem"]
+
+  maintenance:
+    description: "Routine system maintenance"
+    steps: ["backup", "cleanup_logs", "verify_backup", "maintenance_report"]

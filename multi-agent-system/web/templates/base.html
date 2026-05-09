@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Multi-Agent System{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">🤖 Multi-Agent Operations System</div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+        </div>
+        <div class="nav-status">
+            <span id="sys-status" class="status-dot"></span>
+            <span id="sys-status-text">Initializing...</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <span>Multi-Agent Collaborative Operations Automation System v1.0</span>
+        <span id="clock"></span>
+    </footer>
+
+    <script>
+        // Update clock
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleString('zh-CN');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Poll system status
+        async function checkStatus() {
+            try {
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+                const dot = document.getElementById('sys-status');
+                const text = document.getElementById('sys-status-text');
+                if (data.system) {
+                    dot.className = 'status-dot active';
+                    text.textContent = `${data.system.agent_count} agents running`;
+                } else {
+                    dot.className = 'status-dot inactive';
+                    text.textContent = 'Offline';
+                }
+            } catch(e) {
+                document.getElementById('sys-status').className = 'status-dot inactive';
+                document.getElementById('sys-status-text').textContent = 'Connection Error';
+            }
+        }
+        setInterval(checkStatus, 5000);
+        checkStatus();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

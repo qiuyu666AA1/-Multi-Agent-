@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Multi-Agent System - Dashboard{% endblock %}
+
+{% block content %}
+<h1>Operations Dashboard</h1>
+
+<div class="grid-2col">
+    <!-- Task Queue -->
+    <div class="card">
+        <h2>Task Queue</h2>
+        <div class="task-filters">
+            <button class="filter-btn active" onclick="filterTasks('')">All</button>
+            <button class="filter-btn" onclick="filterTasks('pending')">Pending</button>
+            <button class="filter-btn" onclick="filterTasks('running')">Running</button>
+            <button class="filter-btn" onclick="filterTasks('completed')">Completed</button>
+            <button class="filter-btn" onclick="filterTasks('failed')">Failed</button>
+        </div>
+        <div class="task-list" id="task-list">
+            <div class="task-item">Loading tasks...</div>
+        </div>
+    </div>
+
+    <!-- Workflows -->
+    <div class="card">
+        <h2>Active Workflows</h2>
+        <div class="workflow-list" id="workflow-list">
+            <div class="workflow-item">No active workflows</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2col">
+    <!-- System Metrics -->
+    <div class="card">
+        <h2>System Metrics (Simulated)</h2>
+        <div class="metrics-grid" id="metrics-grid">
+            <div class="metric-bar">
+                <label>CPU</label>
+                <div class="bar-bg"><div class="bar-fill" id="metric-cpu" style="width:0%"></div></div>
+                <span id="metric-cpu-val">--</span>
+            </div>
+            <div class="metric-bar">
+                <label>Memory</label>
+                <div class="bar-bg"><div class="bar-fill" id="metric-mem" style="width:0%"></div></div>
+                <span id="metric-mem-val">--</span>
+            </div>
+            <div class="metric-bar">
+                <label>Disk</label>
+                <div class="bar-bg"><div class="bar-fill" id="metric-disk" style="width:0%"></div></div>
+                <span id="metric-disk-val">--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="card">
+        <h2>Active Alerts</h2>
+        <div class="alert-list" id="alert-list">
+            <div class="alert-item alert-info">No active alerts</div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Event Stream -->
+<div class="card">
+    <h2>Live Event Stream</h2>
+    <div class="event-stream" id="event-stream">
+        <div class="event-line">Connecting to event stream...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTaskFilter = '';
+
+async function refreshDashboard() {
+    // Refresh tasks
+    const taskResp = await fetch(`/api/tasks?limit=20${currentTaskFilter ? '&status=' + currentTaskFilter : ''}`);
+    const tasks = await taskResp.json();
+
+    const taskList = document.getElementById('task-list');
+    if (tasks.tasks.length === 0) {
+        taskList.innerHTML = '<div class="task-item">No tasks</div>';
+    } else {
+        taskList.innerHTML = tasks.tasks.map(t => `
+            <div class="task-item task-${t.status}">
+                <div class="task-header">
+                    <span class="task-name">${t.name}</span>
+                    <span class="badge badge-${t.status === 'completed' ? 'green' : t.status === 'failed' ? 'red' : t.status === 'running' ? 'blue' : 'gray'}">${t.status}</span>
+                </div>
+                <div class="task-meta">
+                    <span>ID: ${t.id}</span>
+                    <span>Agent: ${t.assigned_agent || 'unassigned'}</span>
+                    <span>Priority: ${t.priority}</span>
+                </div>
+                ${t.error_message ? `<div class="task-error">${t.error_message}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    // Refresh workflows
+    const wfResp = await fetch('/api/workflows');
+    const workflows = await wfResp.json();
+
+    const wfList = document.getElementById('workflow-list');
+    if (workflows.workflows.length === 0) {
+        wfList.innerHTML = '<div class="workflow-item">No active workflows</div>';
+    } else {
+        wfList.innerHTML = workflows.workflows.map(w => `
+            <div class="workflow-item workflow-${w.status}">
+                <div class="workflow-header">
+                    <span>${w.name}</span>
+                    <span class="badge">${w.status}</span>
+                </div>
+                <div class="workflow-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${w.steps ? (w.steps.filter(s => s.status === 'completed').length / w.steps.length * 100) : 0}%"></div>
+                    </div>
+                </div>
+                <div class="workflow-meta">Steps: ${w.steps?.length || 0}</div>
+            </div>
+        `).join('');
+    }
+
+    // Simulated metrics
+    const cpu = Math.floor(Math.random() * 60 + 20);
+    const mem = Math.floor(Math.random() * 50 + 25);
+    const disk = Math.floor(Math.random() * 40 + 35);
+
+    document.getElementById('metric-cpu').style.width = cpu + '%';
+    document.getElementById('metric-cpu-val').textContent = cpu + '%';
+    document.getElementById('metric-cpu').style.background = cpu > 80 ? '#e74c3c' : cpu > 60 ? '#f39c12' : '#2ecc71';
+
+    document.getElementById('metric-mem').style.width = mem + '%';
+    document.getElementById('metric-mem-val').textContent = mem + '%';
+    document.getElementById('metric-mem').style.background = mem > 85 ? '#e74c3c' : mem > 60 ? '#f39c12' : '#2ecc71';
+
+    document.getElementById('metric-disk').style.width = disk + '%';
+    document.getElementById('metric-disk-val').textContent = disk + '%';
+    document.getElementById('metric-disk').style.background = disk > 90 ? '#e74c3c' : disk > 70 ? '#f39c12' : '#2ecc71';
+}
+
+function filterTasks(status) {
+    currentTaskFilter = status;
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    refreshDashboard();
+}
+
+// SSE event stream
+const evtSource = new EventSource('/api/events/stream');
+const eventStream = document.getElementById('event-stream');
+let eventLines = [];
+
+evtSource.onmessage = function(event) {
+    try {
+        const msg = JSON.parse(event.data);
+        const line = `[${msg.timestamp?.slice(11,19)}] ${msg.type.toUpperCase()} ${msg.sender} → ${msg.recipient || 'all'} : ${msg.topic}`;
+        eventLines.unshift(line);
+        if (eventLines.length > 50) eventLines.pop();
+        eventStream.innerHTML = eventLines.map(l => `<div class="event-line">${l}</div>`).join('');
+    } catch(e) {}
+};
+
+evtSource.onerror = function() {
+    eventStream.innerHTML = '<div class="event-line">Event stream disconnected. Reconnecting...</div>';
+};
+
+// Refresh every 2 seconds
+setInterval(refreshDashboard, 2000);
+refreshDashboard();
+</script>
+{% endblock %}

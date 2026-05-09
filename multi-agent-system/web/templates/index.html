@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Multi-Agent System - Home{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Multi-Agent Collaborative Operations</h1>
+    <p>自动化多智能体协同运营平台 — 任务分解、智能路由、并行执行、实时监控</p>
+</div>
+
+<div class="grid-2col">
+    <!-- Quick Actions -->
+    <div class="card">
+        <h2>Quick Actions</h2>
+        <div class="action-grid">
+            <button class="action-btn" onclick="submitWorkflow('health_check')">
+                <span class="icon">💓</span>
+                <span>Health Check</span>
+            </button>
+            <button class="action-btn" onclick="submitWorkflow('data_analysis')">
+                <span class="icon">📊</span>
+                <span>Data Analysis</span>
+            </button>
+            <button class="action-btn" onclick="submitWorkflow('incident_response')">
+                <span class="icon">🚨</span>
+                <span>Incident Response</span>
+            </button>
+            <button class="action-btn" onclick="createTask()">
+                <span class="icon">📝</span>
+                <span>Create Task</span>
+            </button>
+        </div>
+        <div id="action-result" class="action-result" style="display:none;"></div>
+    </div>
+
+    <!-- System Overview -->
+    <div class="card">
+        <h2>System Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-value" id="agent-count">--</span>
+                <span class="stat-label">Active Agents</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="task-total">--</span>
+                <span class="stat-label">Total Tasks</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="task-pending">--</span>
+                <span class="stat-label">Pending</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="task-completed">--</span>
+                <span class="stat-label">Completed</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agent Status -->
+<div class="card">
+    <h2>Agent Status</h2>
+    <div class="agent-grid" id="agent-grid">
+        <div class="agent-card">
+            <div class="agent-header">
+                <span class="agent-name">Coordinator</span>
+                <span class="badge badge-blue">Loading...</span>
+            </div>
+            <div class="agent-stats">
+                <div>Tasks Processed: <span>--</span></div>
+                <div>Errors: <span>--</span></div>
+            </div>
+        </div>
+        <div class="agent-card">
+            <div class="agent-header">
+                <span class="agent-name">Analyst</span>
+                <span class="badge badge-blue">Loading...</span>
+            </div>
+            <div class="agent-stats">
+                <div>Tasks Processed: <span>--</span></div>
+                <div>Errors: <span>--</span></div>
+            </div>
+        </div>
+        <div class="agent-card">
+            <div class="agent-header">
+                <span class="agent-name">Executor</span>
+                <span class="badge badge-blue">Loading...</span>
+            </div>
+            <div class="agent-stats">
+                <div>Tasks Processed: <span>--</span></div>
+                <div>Errors: <span>--</span></div>
+            </div>
+        </div>
+        <div class="agent-card">
+            <div class="agent-header">
+                <span class="agent-name">Monitor</span>
+                <span class="badge badge-blue">Loading...</span>
+            </div>
+            <div class="agent-stats">
+                <div>Tasks Processed: <span>--</span></div>
+                <div>Errors: <span>--</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Events -->
+<div class="card">
+    <h2>Recent Events</h2>
+    <div class="event-list" id="event-list">
+        <div class="event-item">Loading events...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function refreshDashboard() {
+    try {
+        // Overall status
+        const statusResp = await fetch('/api/status');
+        const status = await statusResp.json();
+
+        if (status.system) {
+            document.getElementById('agent-count').textContent = status.system.agent_count;
+            document.getElementById('task-total').textContent = status.tasks?.total || 0;
+            document.getElementById('task-pending').textContent = status.tasks?.by_status?.pending || 0;
+            document.getElementById('task-completed').textContent = status.tasks?.by_status?.completed || 0;
+        }
+
+        // Agents
+        const agentsResp = await fetch('/api/agents');
+        const agents = await agentsResp.json();
+
+        const agentGrid = document.getElementById('agent-grid');
+        agentGrid.innerHTML = '';
+        for (const [name, agent] of Object.entries(agents.agents)) {
+            const statusClass = agent.status?.state === 'running' ? 'badge-green' : 'badge-red';
+            agentGrid.innerHTML += `
+                <div class="agent-card">
+                    <div class="agent-header">
+                        <span class="agent-name">${name}</span>
+                        <span class="badge ${statusClass}">${agent.status?.state || 'unknown'}</span>
+                    </div>
+                    <div class="agent-stats">
+                        <div>Tasks: <span>${agent.status?.tasks_processed || 0}</span></div>
+                        <div>Errors: <span>${agent.status?.errors || 0}</span></div>
+                        <div>Heartbeat: <span>${agent.status?.last_heartbeat?.slice(11,19) || '--'}</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Recent events
+        const eventsResp = await fetch('/api/events?limit=10');
+        const events = await eventsResp.json();
+
+        const eventList = document.getElementById('event-list');
+        eventList.innerHTML = events.events.slice().reverse().map(e => `
+            <div class="event-item">
+                <span class="event-time">${e.timestamp?.slice(11,19) || ''}</span>
+                <span class="event-type">[${e.type}]</span>
+                <span class="event-sender">${e.sender}</span>
+                <span class="event-topic">${e.topic}</span>
+            </div>
+        `).join('') || '<div class="event-item">No events yet</div>';
+    } catch(e) {
+        console.error('Dashboard refresh error:', e);
+    }
+}
+
+async function submitWorkflow(type) {
+    const result = document.getElementById('action-result');
+    result.style.display = 'block';
+    result.textContent = 'Submitting...';
+    result.className = 'action-result info';
+
+    try {
+        const resp = await fetch('/api/workflows', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                type: type,
+                data_source: 'system',
+                incident_type: 'error_spike',
+                severity: 'high'
+            })
+        });
+        const data = await resp.json();
+        result.textContent = `Workflow submitted: ${data.workflow_id}`;
+        result.className = 'action-result success';
+    } catch(e) {
+        result.textContent = `Error: ${e.message}`;
+        result.className = 'action-result error';
+    }
+}
+
+async function createTask() {
+    const name = prompt('Task name:', 'Manual Task');
+    if (!name) return;
+    const priority = prompt('Priority (critical/high/normal/low):', 'normal');
+
+    const result = document.getElementById('action-result');
+    result.style.display = 'block';
+
+    try {
+        const resp = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, priority, payload: {source: 'manual'}})
+        });
+        const data = await resp.json();
+        result.textContent = `Task created: ${data.task.id}`;
+        result.className = 'action-result success';
+    } catch(e) {
+        result.textContent = `Error: ${e.message}`;
+        result.className = 'action-result error';
+    }
+}
+
+// Refresh every 3 seconds
+setInterval(refreshDashboard, 3000);
+refreshDashboard();
+</script>
+{% endblock %}

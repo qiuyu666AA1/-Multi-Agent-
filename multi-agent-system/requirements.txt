@@ -1,0 +1,27 @@
+# Multi-Agent Collaborative Operations Automation System
+# Core dependencies
+
+# Web framework
+flask>=3.0.0
+
+# Async support (built into Python 3.7+)
+# asyncio - stdlib
+
+# YAML configuration
+pyyaml>=6.0
+
+# System monitoring (optional, for real metrics)
+psutil>=5.9.0
+
+# All other dependencies are Python stdlib:
+# - asyncio (concurrent execution)
+# - json (data serialization)
+# - uuid (ID generation)
+# - dataclasses (data structures)
+# - datetime (timestamps)
+# - subprocess (command execution)
+# - os / platform (system info)
+# - csv / io (data parsing)
+# - smtplib / email (notifications)
+# - urllib (webhooks)
+# - socket (network checks)
